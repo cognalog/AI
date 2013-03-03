@@ -25,6 +25,9 @@
     ((equal e (car ls)) 0)
     (T (+ 1 (pos e (cdr ls))))))
 
+(defun get-0-x (state) (cadr (getl (- (length state) 1) state)))
+(defun get-0-y (state) (car (getl (- (length state) 1) state)))
+
 (defun getl (n ls)
   (cond
     ((zero n) (car ls))
@@ -61,69 +64,36 @@
 ;OPERATOR FUNCTIONS FOR N-PUZZLE
 
 (defun north (parent)
-  (let ((par parent) (child '()))
-    (loop for row in par
-       for y from 0 to  (length par)
-       do
-	 (if (member 0 row)
-	     (if (zero y) (return-from north nil)))
-	 (setf child (push-back row child))					
-	 (loop for col in row
-	    for x from 0 to (length row)
-	    do
-	      (if (zero col)
-		  (progn
-		    (setf child (grid-set x y child (grid-get x (- y 1) child)))
-		    (setf child (grid-set x (- y 1) child 0)))))) ;no modification
-       child))
+  (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
+    (if (zero y) (return-from north nil))
+    (setf child (grid-set x y child (grid-get x (- y 1) child)))
+    (setf child (grid-set x (- y 1) child 0)) ;no modification
+    (setf (car (getl (- (length child) 1) child)) (- y 1))
+    child))
 
 (defun west (parent)
-  (let ((par parent) (child '()))
-    (loop for row in par
-       for y from 0 to  (length par)
-       do
-	 (setf child (push-back row child))	
-	 (loop for col in row
-	    for x from 0 to (length row)
-	    do
-	      (if (null col)
-		  (progn
-		    (if (eq x 0) (return-from west nil)) ;can't go further left
-		    (setf child (grid-set x y child (grid-get (- x 1) y child)))
-		    (setf child (grid-set (- x 1) y child nil)))))) ;swap
+  (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
+    (if (zero x) (return-from west nil))
+    (setf child (grid-set x y child (grid-get (- x 1) y child)))
+    (setf child (grid-set (- x 1) y child 0)) ;no modification
+    (setf (cadr (getl (- (length child) 1) child)) (- x 1))
     child))
 
 (defun south (parent)
-  (let ((par parent) (child '()))
-    (loop for row in par
-       for y from 0 to  (length par)
-       do
-	 (if (member nil row)
-	     (if (eq y (- (length par) 1)) (return-from south nil)))
-	 (setf child (push-back row child))				
-	 (loop for col in row
-	    for x from 0 to (length row)
-	    do
-	      (if (null col)
-		  (progn
-		    (setf child (grid-set x y par (grid-get x (+ y 1) par)))
-		    (setf child (grid-set x (+ y 1) child nil))
-		    (return-from south child)))))))
+  (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
+    (if (eq y (- (length child) 2)) (return-from south nil))
+    (setf child (grid-set x y child (grid-get x (+ y 1) child)))
+    (setf child (grid-set x (+ y 1) child 0)) ;no modification
+    (setf (car (getl (- (length child) 1) child)) (+ y 1))
+    child))
+
 
 (defun east (parent)
-  (let ((par parent) (child '()))
-    (loop for row in par
-       for y from 0 to  (length par)
-       do
-	 (setf child (push-back row child))	
-	 (loop for col in row
-	    for x from 0 to (length row)
-	    do
-	      (if (null col)
-		  (progn
-		    (if (eq x (- (length row) 1)) (return-from east nil)) ;can't go further left
-		    (setf child (grid-set x y child (grid-get (+ x 1) y child)))
-		    (setf child (grid-set (+ x 1) y child nil)))))) ;swap
+  (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
+    (if (eq x (- (length (car child)) 1)) (return-from east nil))
+    (setf child (grid-set x y child (grid-get (+ x 1) y child)))
+    (setf child (grid-set (+ x 1) y child 0)) ;no modification
+    (setf (cadr (getl (- (length child) 1) child)) (+ x 1))
     child))
 
 (defun bfs (s0 sg kids)

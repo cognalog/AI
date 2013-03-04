@@ -52,10 +52,9 @@
       (T (cons (car grid) (grid-set x (- y 1) (cdr grid) e)))))
 
 (defun succ-fxn (node ops)
-  (let ((s-nodes nil) (s-states nil) (n-state (state node)))
+  (let ((s-nodes nil) (s-states nil) (n-state(state node)))
     (loop for op in ops
        do
-	 (print n-state)
 	 (setf s-states `(,(funcall op n-state))) ;new states created
 	 (setf s-nodes 
 	       (append s-nodes
@@ -71,24 +70,24 @@
   (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
     (if (zero y) (return-from north nil))
     (setf child (grid-set x y child (grid-get x (- y 1) child)))
-    (setf child (grid-set x (- y 1) child 0)) ;no modification
-    (setf (car (getl (- (length child) 1) child)) (- y 1))
+    (setf child (grid-set x (- y 1) child 0)) ;swap blank
+    (setf child (grid-set 0 (- (length child) 1) child (- y 1))) ;update coords
     child))
 
 (defun west (parent)
   (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
     (if (zero x) (return-from west nil))
     (setf child (grid-set x y child (grid-get (- x 1) y child)))
-    (setf child (grid-set (- x 1) y child 0)) ;no modification
-    (setf (cadr (getl (- (length child) 1) child)) (- x 1))
+    (setf child (grid-set (- x 1) y child 0)) ;swap blank
+    (setf child (grid-set 1 (- (length child) 1) child (- x 1))) ;update coords
     child))
 
 (defun south (parent)
   (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
     (if (eq y (- (length child) 2)) (return-from south nil))
     (setf child (grid-set x y child (grid-get x (+ y 1) child)))
-    (setf child (grid-set x (+ y 1) child 0)) ;no modification
-    (setf (car (getl (- (length child) 1) child)) (+ y 1))
+    (setf child (grid-set x (+ y 1) child 0)) ;swap blank
+    (setf child (grid-set 0 (- (length child) 1) child (+ y 1))) ;update coords
     child))
 
 
@@ -96,24 +95,7 @@
   (let ((x (get-0-x parent)) (y (get-0-y parent)) (child parent))
     (if (eq x (- (length (car child)) 1)) (return-from east nil))
     (setf child (grid-set x y child (grid-get (+ x 1) y child)))
-    (setf child (grid-set (+ x 1) y child 0)) ;no modification
-    (setf (cadr (getl (- (length child) 1) child)) (+ x 1))
+    (setf child (grid-set (+ x 1) y child 0)) ;swap blank
+    (setf child (grid-set 1 (- (length child) 1) child (+ x 1))) ;update coords
     child))
 
-(defun bfs (s0 sg kids)
-  (let ((ahead `((,s0 ,nil ,nil))) ;list of unexplored nodes, starting with s0
-	(behind nil) ;list of explored nodes
-	(n nil)
-	(children nil)) ;N
-    (loop
-       (if (null ahead) (return-from bfs "no goal state found :("))
-       (setf n (pop ahead)) ;set N to first explored node
-       (print n)
-       (push-back (state n) behind)
-       (if (equal (state n) sg) ;if goal state has been reached
-	   (return-from bfs (solution n)))
-       (setf children (funcall kids n `(,#'north ,#'south ,#'east ,#'west))) ;collect n's child nodes into a list
-       ;(print children)
-       (setf children ;get rid of nodes with states we already have/will cover
-	     (diff children (append ahead behind)))
-       (setf ahead (append ahead children))))) ;add newly generated nodes to frontier

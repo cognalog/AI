@@ -17,8 +17,8 @@
 
 (defun solution (n)
   (cond
-    ((null n) nil)
-    (T (append (solution (parent n)) `(,(state n))))))
+    ((null n) (print "Solution: ") n)
+    (T (append (solution (parent n)) `(,(action n))))))
 
 (defun pos (e ls)
   (cond
@@ -55,10 +55,14 @@
   (let ((s-nodes nil) (s-states nil) (n-state (state node)))
     (loop for op in ops
        do
-	 (setf s-states (funcall op n-state))
+	 (print n-state)
+	 (setf s-states `(,(funcall op n-state))) ;new states created
 	 (setf s-nodes 
 	       (append s-nodes
-		      (mapcar (lambda (s-state) `(,s-state ,op ,node)) s-states))))
+		      (mapcar (lambda (s-state) ;new states --> nodes
+				(if (null s-state) nil
+				    `(,s-state ,op ,node)))
+			      s-states))))
     s-nodes))
 
 ;OPERATOR FUNCTIONS FOR N-PUZZLE
@@ -102,13 +106,14 @@
 	(n nil)
 	(children nil)) ;N
     (loop
-       (if (null ahead) (return "no goal state found :("))
-       (setf n (pop ahead)) ;set N to first unexplored node
+       (if (null ahead) (return-from bfs "no goal state found :("))
+       (setf n (pop ahead)) ;set N to first explored node
+       (print n)
        (push-back (state n) behind)
        (if (equal (state n) sg) ;if goal state has been reached
-	   (print "Solution:")
-	   (return (solution n)))
-       (setf children (funcall kids n `(,#'north ,#'south ,#'east ,#'west)) ;collect n's child nodes into a list
-       (setf children ;get rid of nodes we already have/will cover
+	   (return-from bfs (solution n)))
+       (setf children (funcall kids n `(,#'north ,#'south ,#'east ,#'west))) ;collect n's child nodes into a list
+       ;(print children)
+       (setf children ;get rid of nodes with states we already have/will cover
 	     (diff children (append ahead behind)))
-       (setf ahead (append ahead children)))))) ;add newly generated nodes to frontier
+       (setf ahead (append ahead children))))) ;add newly generated nodes to frontier

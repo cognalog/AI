@@ -43,12 +43,24 @@
 
 ;compute the manhattan cost given initial & goal states
 (defun manhat (s0 sg)
-  (let ((sum 0) (highest (- (expt (- (length s0) 1) 2) 1)))
-    (loop for i from 0 to highest
+  (let ((sum 0) (tiles (- (expt (- (length s0) 1) 2) 1)))
+    (loop for i from 0 to tiles
 	 do
 	 (setf sum (+ sum (+ (abs (- (get-y i s0) (get-y i sg)))
 				  (abs (- (get-x i s0) (get-x i sg)))))))
     sum))
+
+;compute how many tiles are out of place
+(defun mis-match (s0 sg)
+  (let ((count 0) (tiles (- (expt (- (length s0) 1) 2) 1)))
+    (loop for i from 0 to tiles
+	 do (if (not (and (equal (get-y i s0) 
+				 (get-y i sg))
+			  (equal (get-x i s0)
+				 (get-x i sg))))
+		(setq count (1+ count))))
+    count))
+	 
 
 (defun get-0-x (state) (cadr (getl (- (length state) 1) state)))
 (defun get-0-y (state) (car (getl (- (length state) 1) state)))

@@ -2,6 +2,7 @@
 (defun state (node) (first node))
 (defun action (node) (second node))
 (defun parent (node) (third node))
+(defun depth (node) (fourth node))
 
 (defun diff (l1 l2)
   (cond
@@ -9,15 +10,12 @@
     ((find (car l1) l2) (diff (cdr l1) l2))
     (T (cons (car l1) (diff (cdr l1) l2)))))
 
-(defun push-back (e ls)
-  (append ls `(,e)))
-
 (defun zero (n)
   (eq n 0))
 
 (defun solution (n)
   (cond
-    ((null n) (print "Solution: ") n)
+    ((null n) (print 'Solution) n)
     (T (append (solution (parent n)) `(,(action n))))))
 
 (defun pos (e ls)
@@ -51,16 +49,26 @@
       ((zero y) (cons (setl x (car grid) e) (grid-set x (- y 1) (cdr grid) e)))
       (T (cons (car grid) (grid-set x (- y 1) (cdr grid) e)))))
 
+(defun backtrack? (op1 op2)
+  (cond
+    ((equal op1 #'north) (equal op2 #'south))
+    ((equal op1 #'south) (equal op2 #'north))
+    ((equal op1 #'east) (equal op2 #'west))
+    ((equal op1 #'west) (equal op2 #'east))
+    (t nil)))
+
 (defun succ-fxn (node ops)
-  (let ((s-nodes nil) (s-states nil) (n-state(state node)))
+  (let ((s-nodes nil) (s-states nil) (n-state (state node)))
     (loop for op in ops
        do
 	 (setf s-states `(,(funcall op n-state))) ;new states created
 	 (setf s-nodes 
 	       (append s-nodes
 		      (mapcar (lambda (s-state) ;new states --> nodes
-				(if (null s-state) nil
-				    `(,s-state ,op ,node)))
+				(cond
+				((null s-state) nil)
+				((backtrack? op (action node)) nil)
+				(t `(,s-state ,op ,node))))
 			      s-states))))
     s-nodes))
 
@@ -99,7 +107,7 @@
     (setf child (grid-set 1 (- (length child) 1) child (+ x 1))) ;update coords
     child))
 
-(defun dfs (s0 sg kids d)
+(defun bfs (s0 sg)
   (let ((ahead `((,s0 ,nil ,nil))) ;list of unexplored nodes, starting with s0
 	(behind nil) ;list of explored nodes
 	(n nil)
@@ -107,11 +115,11 @@
     (loop
        (if (null ahead) (return-from bfs "no goal state found :("))
        (setf n (pop ahead)) ;set N to first explored node
-       (push-back (state n) behind)
+       (push (state n) behind)
        (if (equal (state n) sg) ;if goal state has been reached
-	   (return-from bfs (solution n)))
+	   (return-from bfs (remove nil(solution n))))
 					;collect n's child nodes into a list
-       (setf children (remove nil (funcall kids n `(,#'north ,#'south ,#'east ,#'west)))) 
+       (setf children (remove nil (succ-fxn n `(,#'north ,#'south ,#'east ,#'west))))
        (setf children ;get rid of nodes with states we already have/will cover
 	     (diff children (append ahead behind)))
        (setf ahead (append ahead children))))) ;add newly generated nodes to frontier

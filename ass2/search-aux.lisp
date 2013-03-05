@@ -3,18 +3,19 @@
 (defun action (node) (second node))
 (defun parent (node) (third node))
 (defun depth (node) (fourth node))
+(defun g-hat (node) (fourth node))
 
 (defun diff (l1 l2)
   (cond
     ((or (null l1) (null l2)) l1)
-    ((find-state (state (car l1)) l2) (diff (cdr l1) l2))
-    (T (cons (car l1) (diff (cdr l1) l2)))))
+    ((member-state (state (car l1)) l2) (diff (cdr l1) l2))
+    (t (cons (car l1) (diff (cdr l1) l2)))))
 
-(defun find-state (s ls)
+(defun member-state (s ls)
   (cond
     ((null ls) nil)
-    ((equal (state (car ls)) s) t)
-    (t (find-state s (cdr ls)))))
+    ((equal (state (car ls)) s) ls)
+    (t (member-state s (cdr ls)))))
 
 (defun zero (n)
   (eq n 0))
@@ -28,6 +29,26 @@
   (cond
     ((equal e (car ls)) 0)
     (T (+ 1 (pos e (cdr ls))))))
+
+;get the row of a tile in a state
+(defun get-y (e state)
+  (cond
+    ((null state) nil)
+    ((find e (car state)) 0)
+    (t (+ 1 (get-y e (cdr state))))))
+
+;get the column of a tile in a state
+(defun get-x (e state)
+  (pos e (getl (get-y e state) state)))
+
+;compute the manhattan cost given initial & goal states
+(defun manhat (s0 sg)
+  (let ((sum 0) (highest (- (expt (- (length s0) 1) 2) 1)))
+    (loop for i from 0 to highest
+	 do
+	 (setf sum (+ sum (+ (abs (- (get-y i s0) (get-y i sg)))
+				  (abs (- (get-x i s0) (get-x i sg)))))))
+    sum))
 
 (defun get-0-x (state) (cadr (getl (- (length state) 1) state)))
 (defun get-0-y (state) (car (getl (- (length state) 1) state)))
@@ -55,14 +76,6 @@
       ((zero y) (cons (setl x (car grid) e) (grid-set x (- y 1) (cdr grid) e)))
       (T (cons (car grid) (grid-set x (- y 1) (cdr grid) e)))))
 
-(defun backtrack? (op1 op2)
-  (cond
-    ((equal op1 #'north) (equal op2 #'south))
-    ((equal op1 #'south) (equal op2 #'north))
-    ((equal op1 #'east) (equal op2 #'west))
-    ((equal op1 #'west) (equal op2 #'east))
-    (t nil)))
-
 (defun succ-fxn (node ops)
   (let ((s-nodes nil) (s-states nil) (n-state (state node)))
     (loop for op in ops
@@ -73,7 +86,6 @@
 		      (mapcar (lambda (s-state) ;new states --> nodes
 				(cond
 				((null s-state) nil)
-				((backtrack? op (action node)) nil)
 				(t `(,s-state ,op ,node))))
 			      s-states))))
     s-nodes))

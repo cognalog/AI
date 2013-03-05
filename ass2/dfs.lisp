@@ -1,4 +1,4 @@
-(load "bfs.lisp")
+(load "search-aux.lisp")
 
 (defun dfs-succ (node ops)
   (let ((s-nodes nil) (s-states nil) (n-state (state node)) (d (depth node)))
@@ -11,7 +11,7 @@
 				(cond
 				  ((null s-state) nil)
 					;prevent 2-step cycles
-				  ((backtrack? op (action node)) nil)
+				  ;((backtrack? op (action node)) nil)
 				  (t `(,s-state ,op ,node ,(+ d 1)))))
 			      s-states))))
     s-nodes))
@@ -26,7 +26,7 @@
        (setf n (pop ahead)) ;set N to first explored node
        (if (< (depth n) limit) 
 	   (progn
-	     (push (state n) behind)
+	     (push n behind)
 	     (if (equal (state n) sg) ;if goal state has been reached
 		 (return-from dfs (remove nil (solution n))))
 					;collect n's child nodes into a list

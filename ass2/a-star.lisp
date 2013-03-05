@@ -1,7 +1,7 @@
 (load "search-aux.lisp")
 (defun s-hat (node) (fifth node))
 
-(defun star-succ (node ops sg)
+(defun star-succ (node ops h sg)
   (let ((s-nodes nil) (s-states nil) (n-state (state node)))
     (loop for op in ops
        do
@@ -15,7 +15,7 @@
 				     ,op 
 				     ,node
 				     ,(+ 1 (g-hat node))
-				     ,(+ 1 (g-hat node) (manhat s-state sg))))))
+				     ,(+ 1 (g-hat node) (funcall h s-state sg))))))
 			      s-states))))
     s-nodes))
 
@@ -31,9 +31,9 @@
 		 (setf (first sub-open) curr-node)))
 	   (push curr-node ahead)))))
 
-(defun a-star (s0 sg stats?)
+(defun a-star (s0 sg heur stats?)
 ;list of unexplored nodes, starting with s0
-  (let ((ahead `((,s0 ,nil ,nil ,0 (manhat s0 sg))))
+  (let ((ahead `((,s0 ,nil ,nil ,0 (funcall heur s0 sg))))
 	(behind nil) ;list of explored nodes
 	(n nil)
 	(children nil)
@@ -52,7 +52,9 @@
 	       (return-from a-star (remove nil (solution n)))))
        (push n behind)
 					;collect n's child nodes into a list
-       (setf children (remove nil (star-succ n `(,#'north ,#'south ,#'east ,#'west) sg)))
+       (setf children (remove nil (star-succ n `(,#'north ,#'south ,#'east ,#'west) 
+					     heur
+					     sg)))
 					;get rid of nodes with states we already have covered
        (setf node-count (+ node-count (length children)))
        (let ((temp (length children)))

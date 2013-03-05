@@ -1,7 +1,7 @@
 (load "search-aux.lisp")
 (defun h-hat (node) (fourth node))
 
-(defun greedy-succ (node ops sg)
+(defun greedy-succ (node ops h sg)
   (let ((s-nodes nil) (s-states nil) (n-state (state node)))
     (loop for op in ops
        do
@@ -14,12 +14,13 @@
 				(t `(,s-state 
 				     ,op 
 				     ,node 					      
-				     ,(manhat s-state sg)))))
+				     ,(funcall h s-state sg)))))
 			      s-states))))
     s-nodes))
 
-(defun greedy (s0 sg stats?)
-  (let ((ahead `((,s0 ,nil ,nil ,(manhat s0 sg)))) ;list of unexplored nodes, starting with s0
+(defun greedy (s0 sg heur stats?)
+;list of unexplored nodes, starting with s0
+  (let ((ahead `((,s0 ,nil ,nil ,(funcall heur s0 sg)))) 
 	(behind nil) ;list of explored nodes
 	(n nil)
 	(children nil)
@@ -38,7 +39,10 @@
 	       (return-from greedy (remove nil (solution n)))))
        (push n behind)
 					;collect n's child nodes into a list
-       (setf children (remove nil (greedy-succ n `(,#'north ,#'south ,#'east ,#'west) sg)))
+       (setf children (remove nil (greedy-succ n 
+					       `(,#'north ,#'south ,#'east ,#'west)
+					       heur 
+					       sg)))
        (setf node-count (+ node-count (length children)))
        (let ((temp (length children)))
 ;get rid of nodes with states we already have covered

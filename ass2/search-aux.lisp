@@ -51,7 +51,7 @@
     sum))
 
 ;compute how many tiles are out of place
-(defun mis-match (s0 sg)
+(defun outta-place (s0 sg)
   (let ((count 0) (tiles (- (expt (- (length s0) 1) 2) 1)))
     (loop for i from 0 to tiles
 	 do (if (not (and (equal (get-y i s0) 
@@ -59,6 +59,16 @@
 			  (equal (get-x i s0)
 				 (get-x i sg))))
 		(setq count (1+ count))))
+    count))
+
+(defun row-and-column (s0 sg)
+  (let ((count 0) (tiles (- (expt (- (length s0) 1) 2) 1)))
+    (loop for i from 0 to tiles
+       do 
+	 (if (not (equal (get-y i s0) (get-y i sg)))
+	     (setq count (1+ count)))
+	 (if (not (equal (get-x i s0) (get-x i sg)))
+	     (setq count (1+ count))))
     count))
 	 
 

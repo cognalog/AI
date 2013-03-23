@@ -12,6 +12,7 @@
 ;get node/state/player info
 (defun state (node) (first node))
 (defun u-hat (node) (second node))
+(defun stop-time (node) (third node))
 (defun board (state) (first state))
 (defun print-board (state) (format t "~{~{~a~^ ~}~%~}" (board state)))
 (defun player (p state)
@@ -105,12 +106,22 @@
   (relative-flex pl state))
 	  
 (defun successors (pl parent)
-  (mapcar
-   (lambda (state)
-     (list state (utility pl state)))
-   (append
-    (plus pl (state parent))
-    (times pl (state parent)))))
+  (let ((new-states nil) 
+	(old-time (- (stop-time parent) (get-internal-real-time)))
+	(new-time 0)
+	(time-inc 0))
+    (setf new-states
+	  (append
+	   (plus pl (state parent))
+	   (times pl (state parent))))
+    (setf time-inc (/ old-time (length new-states)))
+    (setf new-time (+ (get-internal-real-time) time-inc))
+    (mapcar
+     (lambda (state)
+       (let ((node (list state 0 new-time)))
+	 (setf new-time (+ new-time time-inc))
+	 node))
+     new-states)))
 
 ;make a hypothetical move for a player if move is legal
 (defun move (pl row col state)

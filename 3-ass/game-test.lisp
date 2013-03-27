@@ -60,6 +60,22 @@
      (eq (abs (- row old-row))
 	 (abs (- col old-col)))))))
 
+;make a hypothetical move for a player if move is legal
+(defun move (pl row col state)
+  (if (legal-move? pl row col state)
+      (list
+       (grid-set row col 
+		 (grid-set (p-row (player pl state))
+			   (p-col (player pl state))
+			   (board state)
+			   '*);place the asterisk
+		 pl);place the player
+       (if (equal pl 'x) (list pl row col)
+	   (player 'x state))
+       (if (equal pl 'o) (list pl row col)
+	   (player 'o state)))
+      (progn (format t "Illegal move by ~a" pl) nil)))
+
 ;given a player and a game state, returns the possible non-diagonal moves
 (defun plus (pl state)
   (let ((old-row (p-row (player pl state))) 
@@ -104,9 +120,25 @@
 
 (defun utility (pl state)
   (relative-flex pl state))
-	  
+
+;check to see whether a node cannot have any more children
+(defun terminal? (node)
+  (or
+;out of time
+   (>= (get-internal-real-time) (stop-time node))
+;out of moves
+   (eq (length (append
+	   (plus 'x (state node))
+	   (times 'x (state node))))
+       0)
+   (eq (length (append
+	   (plus 'o (state node))
+	   (times 'o (state node))))
+       0)))
+
 (defun successors (pl parent)
-  (let ((new-states nil) 
+  (let ((new-states nil)
+;old time: the amount of time left in the turn 
 	(old-time (- (stop-time parent) (get-internal-real-time)))
 	(new-time 0)
 	(time-inc 0))
@@ -119,22 +151,27 @@
     (mapcar
      (lambda (state)
        (let ((node (list state 0 new-time)))
+;update stop-time for next search path
 	 (setf new-time (+ new-time time-inc))
 	 node))
      new-states)))
 
-;make a hypothetical move for a player if move is legal
-(defun move (pl row col state)
-  (if (legal-move? pl row col state)
-      (list
-       (grid-set row col 
-		 (grid-set (p-row (player pl state))
-			   (p-col (player pl state))
-			   (board state)
-			   '*);place the asterisk
-		 pl);place the player
-       (if (equal pl 'x) (list pl row col)
-	   (player 'x state))
-       (if (equal pl 'o) (list pl row col)
-	   (player 'o state)))
-      (progn (format t "Illegal move by ~a" pl) nil)))
+
+
+(defun max-value (pl node alpha beta)
+  (if (terminal? node) (utility pl node))
+  (let ((value -9999999))
+    (loop for s in (successors pl node) do
+	 (setf value (max value (min-value pl s alpha beta)))
+	 (if (>= value beta) value)
+	 (setf alpha (max alpha value)))
+    value))
+
+(defun min-value (pl node alpha beta)
+  (if (terminal? node) (utility pl node))
+  (let ((value 9999999))
+    (loop for s in (successors pl node) do
+	 (setf value (min value (max-value pl s alpha beta)))
+	 (if (<= value alpha) value)
+	 (setf beta (min beta value)))
+    value))

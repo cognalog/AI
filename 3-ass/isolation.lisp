@@ -1,3 +1,4 @@
+;Tyrone Hinderson, tph2107
 (defvar *start*)
 (setf *start* '(((x - - - - - - -) 
 		 (- - - - - - - -) 
@@ -120,17 +121,49 @@
 	until (null (legal-move? pl (- old-row d) (+ old-col d) state))
 	collect (move pl (- old-row d) (+ old-col d) state)))))
 
+;looks at diagonals or non-diag first at random
 (defun possible-moves (pl state)
-  (append (plus pl state) (times pl state)))
+  (if (> (random 2) 0)
+      (append (plus pl state) (times pl state))
+      (append (times pl state) (plus pl state))))
+
+;HEURISTICS
+
+;compares my moves with opponent's
+(defun relative-flex (pl state)
+  (- 
+   (* (length (possible-moves pl state)) 2)
+   (length (possible-moves (if (equal pl 'x) 'o 'x)  state))))
+
+;these two determine the amount of adjacency among asterices
+(defun adjacent-asterices (row col state)
+  (let ((total 0))
+    (loop for i from (- row 1) to (+ row 1) do
+	 (loop for j from (- col 1) to (+ col 1) do
+	      (if (equal (grid-get i j (board state)) '*) (incf total))))
+    total))
+
+(defun asterisk-parties (state)
+  (let ((grid (board state)))
+    (apply #'+
+	   (loop for r from 1 to (length grid) collect
+		(apply #'+ 
+		       (loop for c from 1 to (length (getl r grid)) collect
+			    (if (equal (grid-get r c grid) '*)
+				(adjacent-asterices r c state)
+				0)))))))    
 
 (defun utility (pl state)
   (let ((opp (if (equal pl 'x) 'o 'x)) (moves (length (possible-moves pl state))))
     (cond
       ((eq moves 0) -999)
       ((eq (length (possible-moves opp state)) 0) 999)
-      (t moves #|(- 
-	  (* moves 2)
-	  (length (possible-moves opp state)))|#))))
+      (t (+ (relative-flex pl state)
+	    (/ (asterisk-parties state) 4))))))
+
+(defun meta-u (pl state)
+  (- (utility pl state) 
+     (utility (if (equal pl 'x) 'o 'x) state)))
 
 ;check to see whether a node cannot have any more children
 (defun terminal? (node)
@@ -178,15 +211,21 @@
 	 (setf beta (min beta value)))
     value))
 
+(defun pair-up (l1 l2)
+  (cond
+    ((null l1) '())
+    ((null l2) '())
+    (t (cons `(,(car l1) = ,(car l2)) (pair-up (cdr l1) (cdr l2))))))q
+
 (defun best-move (pl state secs)
   (let ((kids (successors
 	       pl 
 	       (list state 0 
 		     (+ (get-internal-real-time)
 			(* secs 1000))))))
-    (let ((values (mapcar (lambda (node) (max-value pl node -999 999 12)) kids)))
-      (cdr (player pl (state (getl (position (apply #'max values) values :test #'eq)
-	    kids)))))))
+    (let ((values (mapcar (lambda (node) (min-value pl node -999 999 12)) kids)))
+      (cdr (player pl (state (getl (+ (position (apply #'max values) values :test #'eq) 1)
+				   kids)))))))
 
 (defun main (pl state secs turn)
   (if (equal turn pl)
@@ -195,7 +234,7 @@
 	    (n-state nil) 
 	    (opp (if (equal pl 'x) 'o 'x)))
 	(if (or (null (car b-m)) (null (cadr b-m)))
-	    (format t "I surrender ~%~a~%" (print-board state))
+	    (format t "I surrender ~a~%~a~%" b-m (print-board state))
 	    (progn
 	      (setf n-state (move pl (car b-m) (cadr b-m) state))
 	      (format t "my move: ~a~%~a~%" b-m (print-board n-state))
@@ -208,6 +247,7 @@
 	      (n-state nil))
 	  (let ((row (car o-m)) (col (cadr o-m)))
 	    (cond
+	      ((equal o-m 'stop) (format t "done~%"))
 	      ((equal row 'rollback) ;rollback is requested
 	       (setf n-state (rollback state col))
 	       (format t "Board has been rolled back ~a times~%~a~%" 
@@ -219,9 +259,11 @@
 	      ((or (equal o-m '(null null))
 		   (not (legal-move? opp row col state)))
 	       (format t "Opponent did not move, Victory is mine!~%~a" 
-		       (print-board state)))
+		       (print-board state))
+	       (main pl state secs opp))
 ;opp gives normal move
 	      (t (setf n-state (move opp row col state))
+		 (format t "~a~%" (print-board n-state))
 		 (main pl n-state secs pl))))))))
 
 	   

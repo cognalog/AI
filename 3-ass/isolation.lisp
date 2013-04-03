@@ -1,5 +1,5 @@
-(defvar *state*)
-(setf *state* '(((x - - - - - - -) 
+(defvar *start*)
+(setf *start* '(((x - - - - - - -) 
 		 (- - - - - - - -) 
 		 (- - - - - - - -)
 		 (- - - - - - - -) 
@@ -7,7 +7,7 @@
 		 (- - - - - - - -) 
 		 (- - - - - - - -) 
 		 (- - - - - - - o)) 
-		(x 1 1) (o 8 8)))
+		(x 1 1) (o 8 8) null))
 
 ;get node/state/player info
 (defun state (node) (first node))
@@ -20,8 +20,14 @@
     ((equal p 'x) (second state))
     ((equal p 'o) (third state))
     (T nil)))
+(defun previous (state) (fourth state))
 (defun p-row (player) (second player))
 (defun p-col (player) (third player))
+
+(defun rollback (state times)
+  (cond
+    ((eq times 0) state)
+    (t (rollback (previous state) (- times 1)))))
 
 (defun getl (n ls)
   (cond
@@ -73,7 +79,8 @@
        (if (equal pl 'x) (list pl row col)
 	   (player 'x state))
        (if (equal pl 'o) (list pl row col)
-	   (player 'o state)))
+	   (player 'o state))
+       state)
       (progn (format t "Illegal move by ~a" pl) nil)))
 
 ;given a player and a game state, returns the possible non-diagonal moves
@@ -112,14 +119,11 @@
 	until (null (legal-move? pl (- old-row d) (+ old-col d) state))
 	collect (move pl (- old-row d) (+ old-col d) state)))))
 
-;compares my number of available moves to opponent's
-(defun relative-flex (pl state)
-  (let ((opp (if (equal pl 'x) 'o 'x)))
-    (- (length (append (plus pl state) (times pl state)))
-       (length (append (plus opp state) (times opp state))))))
+(defun possible-moves (pl state)
+  (append (plus pl state) (times pl state)))
 
 (defun utility (pl state)
-  (relative-flex pl state))
+  (length (possible-moves  pl state)))
 
 ;check to see whether a node cannot have any more children
 (defun terminal? (node)
@@ -127,14 +131,8 @@
 ;out of time
    (>= (get-internal-real-time) (stop-time node))
 ;out of moves
-   (eq (length (append
-	   (plus 'x (state node))
-	   (times 'x (state node))))
-       0)
-   (eq (length (append
-	   (plus 'o (state node))
-	   (times 'o (state node))))
-       0)))
+   (eq (length (possible-moves 'x (state node))) 0)
+   (eq (length (possible-moves 'o (state node))) 0)))
 
 (defun successors (pl parent)
   (let ((new-states nil)
@@ -142,10 +140,7 @@
 	(old-time (- (stop-time parent) (get-internal-real-time)))
 	(new-time 0)
 	(time-inc 0))
-    (setf new-states
-	  (append
-	   (plus pl (state parent))
-	   (times pl (state parent))))
+    (setf new-states (possible-moves pl (state parent)))
     (setf time-inc (/ old-time (length new-states)))
     (setf new-time (+ (get-internal-real-time) time-inc))
     (mapcar
@@ -156,10 +151,8 @@
 	 node))
      new-states)))
 
-
-
 (defun max-value (pl node alpha beta)
-  (if (terminal? node) (utility pl node))
+  (if (terminal? node) (return-from max-value (utility pl (state node))))
   (let ((value -9999999))
     (loop for s in (successors pl node) do
 	 (setf value (max value (min-value pl s alpha beta)))
@@ -168,10 +161,52 @@
     value))
 
 (defun min-value (pl node alpha beta)
-  (if (terminal? node) (utility pl node))
+  (if (terminal? node) (return-from min-value (utility pl (state node))))
   (let ((value 9999999))
     (loop for s in (successors pl node) do
 	 (setf value (min value (max-value pl s alpha beta)))
 	 (if (<= value alpha) value)
 	 (setf beta (min beta value)))
     value))
+
+(defun best-move (pl state secs)
+  (let ((kids (successors
+	       pl 
+	       (list state 0 
+		     (+ (get-internal-real-time)
+			(* secs 1000))))))
+    (let ((values (mapcar (lambda (node) (max-value pl node -999 999)) kids)))
+      (cdr (player pl (state (getl (position (apply #'max values) values :test #'eq)
+	    kids)))))))
+
+(defun main (pl state secs)
+  (print "What is the opponent's move?")
+  (let ((opp (if (equal pl 'x) 'o 'x)) (o-m (read)) (n-state nil))
+    (cond
+      ((or (equal o-m '(null null))
+	   (not (legal-move? opp (car o-m) (cadr o-m) state)))
+       (format t "Victory is mine!~%~a" (print-board state)))
+      ((equal (car o-m) 'rollback)
+       (setf n-state (rollback state (cadr o-m)))
+       (format t "Board has been rolled back ~a~%~a~%" 
+	       (cadr o-m) (print-board n-state))
+       (main pl n-state secs))
+      (t (setf n-state (move opp (car o-m) (cadr o-m) state))
+	 (let ((b-m (best-move pl n-state secs)))
+	   (setf n-state (move pl (car b-m) (cadr b-m) n-state))
+	   (format t "~a~%~a~%" b-m (print-board n-state)))
+	 (main pl n-state secs)))))
+	   
+
+(defun begin (secs)
+  (format t "Which player am I? ('x' or 'o')")
+  (let ((pl (read)))
+    (cond
+      ((equal pl 'x) 
+       (let ((bm (best-move pl *start* secs)) (n-state nil))
+	 (setf n-state (move pl (car bm) (cadr bm) *start*))
+	 (format t "~a~%~a~%" bm (print-board n-state))
+	 (main pl n-state secs)))
+      ((equal pl 'o) (main pl *start* secs))
+      (t (format t "dude, x or o~%")
+	 (begin secs)))))

@@ -82,7 +82,7 @@
        (if (equal pl 'o) (list pl row col)
 	   (player 'o state))
        state)
-      (progn (format t "Illegal move by ~a~%" pl) nil)))
+      (progn (format t "Illegal move ~a by ~a~%" `(,row ,col) pl) nil)))
 
 ;given a player and a game state, returns the possible non-diagonal moves
 (defun plus (pl state)
@@ -128,7 +128,9 @@
     (cond
       ((eq moves 0) -999)
       ((eq (length (possible-moves opp state)) 0) 999)
-      (t moves))))
+      (t moves #|(- 
+	  (* moves 2)
+	  (length (possible-moves opp state)))|#))))
 
 ;check to see whether a node cannot have any more children
 (defun terminal? (node)
@@ -151,26 +153,28 @@
     (mapcar
      (lambda (state)
        (let ((node (list state 0 new-time)))
-;update stop-time for next search path
+					;update stop-time for next search path
 	 (setf new-time (+ new-time time-inc))
 	 node))
      new-states)))
 
-(defun max-value (pl node alpha beta)
-  (if (terminal? node) (return-from max-value (utility pl (state node))))
+(defun max-value (pl node alpha beta depth)
+  (if (or (eq depth 0) (terminal? node))
+      (return-from max-value (utility pl (state node))))
   (let ((value -999))
     (loop for s in (successors pl node) do
-	 (setf value (max value (min-value pl s alpha beta)))
-	 (if (>= value beta) value)
+	 (setf value (max value (min-value pl s alpha beta (- depth 1))))
+	 (if (>= value beta) (return-from max-value value))
 	 (setf alpha (max alpha value)))
     value))
 
-(defun min-value (pl node alpha beta)
-  (if (terminal? node) (return-from min-value (utility pl (state node))))
+(defun min-value (pl node alpha beta depth)
+  (if (or (eq depth 0) (terminal? node))
+      (return-from min-value (utility pl (state node))))
   (let ((value 999))
     (loop for s in (successors pl node) do
-	 (setf value (min value (max-value pl s alpha beta)))
-	 (if (<= value alpha) value)
+	 (setf value (min value (max-value pl s alpha beta (- depth 1))))
+	 (if (<= value alpha) (return-from min-value value))
 	 (setf beta (min beta value)))
     value))
 
@@ -180,7 +184,7 @@
 	       (list state 0 
 		     (+ (get-internal-real-time)
 			(* secs 1000))))))
-    (let ((values (mapcar (lambda (node) (max-value pl node -999 999)) kids)))
+    (let ((values (mapcar (lambda (node) (max-value pl node -999 999 12)) kids)))
       (cdr (player pl (state (getl (position (apply #'max values) values :test #'eq)
 	    kids)))))))
 
@@ -194,7 +198,7 @@
 	    (format t "I surrender ~%~a~%" (print-board state))
 	    (progn
 	      (setf n-state (move pl (car b-m) (cadr b-m) state))
-	      (format t "~a~%~a~%" b-m (print-board n-state))
+	      (format t "my move: ~a~%~a~%" b-m (print-board n-state))
 	      (main pl n-state secs opp))))
 ;it is opponent's move
       (progn

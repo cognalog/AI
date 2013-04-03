@@ -26,7 +26,7 @@
 
 (defun rollback (state times)
   (cond
-    ((eq times 0) state)
+    ((or (null state) (eq times 0)) state)
     (t (rollback (previous state) (- times 1)))))
 
 (defun getl (n ls)
@@ -58,13 +58,15 @@
 ;determine whether a move is legal
 (defun legal-move? (pl row col state)
   (let ((old-row (p-row (player pl state))) (old-col (p-col (player pl state))))
-   (and ;make sure space is free
-    (equal (grid-get row col (board state)) '-)
-    (or ;make sure it's a queen-move
-     (eq row old-row)
-     (eq col old-col)
-     (eq (abs (- row old-row))
-	 (abs (- col old-col)))))))
+    (if (or (null row) (null col))
+	nil
+	(and ;make sure space is free
+	 (equal (grid-get row col (board state)) '-)
+	 (or ;make sure it's a queen-move
+	  (eq row old-row)
+	  (eq col old-col)
+	  (eq (abs (- row old-row))
+	      (abs (- col old-col))))))))
 
 ;make a hypothetical move for a player if move is legal
 (defun move (pl row col state)
@@ -123,7 +125,10 @@
   (append (plus pl state) (times pl state)))
 
 (defun utility (pl state)
-  (length (possible-moves  pl state)))
+  (let ((movecount (length (possible-moves  pl state)))
+	(opp (if (equal pl 'x) 'o 'x)))
+    (if (eq movecount 0) -999)
+    (if (eq (length (possible-moves opp state)) 0) 999)))
 
 ;check to see whether a node cannot have any more children
 (defun terminal? (node)
@@ -179,23 +184,42 @@
       (cdr (player pl (state (getl (position (apply #'max values) values :test #'eq)
 	    kids)))))))
 
-(defun main (pl state secs)
-  (print "What is the opponent's move?")
-  (let ((opp (if (equal pl 'x) 'o 'x)) (o-m (read)) (n-state nil))
-    (cond
-      ((or (equal o-m '(null null))
-	   (not (legal-move? opp (car o-m) (cadr o-m) state)))
-       (format t "Victory is mine!~%~a" (print-board state)))
-      ((equal (car o-m) 'rollback)
-       (setf n-state (rollback state (cadr o-m)))
-       (format t "Board has been rolled back ~a~%~a~%" 
-	       (cadr o-m) (print-board n-state))
-       (main pl n-state secs))
-      (t (setf n-state (move opp (car o-m) (cadr o-m) state))
-	 (let ((b-m (best-move pl n-state secs)))
-	   (setf n-state (move pl (car b-m) (cadr b-m) n-state))
-	   (format t "~a~%~a~%" b-m (print-board n-state)))
-	 (main pl n-state secs)))))
+(defun main (pl state secs turn)
+  (if (equal turn pl)
+;it is our move
+      (let ((b-m (best-move pl state secs))
+	    (n-state nil) 
+	    (opp (if (equal pl 'x) 'o 'x)))
+	(if (or (null (car b-m)) (null (cadr b-m)))
+	    (format t "I surrender ~%~a~%" (print-board state))
+	    (progn
+	      (setf n-state (move pl (car b-m) (cadr b-m) state))
+	      (format t "~a~%~a~%" b-m (print-board n-state))
+	      (main pl n-state secs opp))))
+;it is opponent's move
+      (progn
+	(print "What is the opponent's move?")
+	(let ((opp (if (equal pl 'x) 'o 'x)) 
+	      (o-m (read))
+	      (n-state nil))
+	  (let ((row (car o-m)) (col (cadr o-m)))
+	    (cond
+	      ((equal row 'rollback) ;rollback is requested
+	       (setf n-state (rollback state col))
+	       (format t "Board has been rolled back ~a times~%~a~%" 
+		       col (print-board n-state))
+	       (if (evenp col)
+		   (main pl n-state secs opp)
+		   (main pl n-state secs pl)))
+;opp gives bad move
+	      ((or (equal o-m '(null null))
+		   (not (legal-move? opp row col state)))
+	       (format t "Opponent did not move, Victory is mine!~%~a" 
+		       (print-board state)))
+;opp gives normal move
+	      (t (setf n-state (move opp row col state))
+		 (main pl n-state secs pl))))))))
+
 	   
 
 (defun begin (secs)
@@ -206,7 +230,7 @@
        (let ((bm (best-move pl *start* secs)) (n-state nil))
 	 (setf n-state (move pl (car bm) (cadr bm) *start*))
 	 (format t "~a~%~a~%" bm (print-board n-state))
-	 (main pl n-state secs)))
-      ((equal pl 'o) (main pl *start* secs))
-      (t (format t "dude, x or o~%")
+	 (main pl n-state secs 'o)))
+      ((equal pl 'o) (main pl *start* secs 'x))
+      (t (format t "dude, x or o.~%")
 	 (begin secs)))))

@@ -58,8 +58,7 @@
 ;determine whether a move is legal
 (defun legal-move? (pl row col state)
   (let ((old-row (p-row (player pl state))) (old-col (p-col (player pl state))))
-    (if (or (null row) (null col))
-	nil
+    (if (or (null row) (null col)) nil
 	(and ;make sure space is free
 	 (equal (grid-get row col (board state)) '-)
 	 (or ;make sure it's a queen-move
@@ -83,7 +82,7 @@
        (if (equal pl 'o) (list pl row col)
 	   (player 'o state))
        state)
-      (progn (format t "Illegal move by ~a" pl) nil)))
+      (progn (format t "Illegal move by ~a~%" pl) nil)))
 
 ;given a player and a game state, returns the possible non-diagonal moves
 (defun plus (pl state)
@@ -125,10 +124,11 @@
   (append (plus pl state) (times pl state)))
 
 (defun utility (pl state)
-  (let ((movecount (length (possible-moves  pl state)))
-	(opp (if (equal pl 'x) 'o 'x)))
-    (if (eq movecount 0) -999)
-    (if (eq (length (possible-moves opp state)) 0) 999)))
+  (let ((opp (if (equal pl 'x) 'o 'x)) (moves (length (possible-moves pl state))))
+    (cond
+      ((eq moves 0) -999)
+      ((eq (length (possible-moves opp state)) 0) 999)
+      (t moves))))
 
 ;check to see whether a node cannot have any more children
 (defun terminal? (node)
@@ -158,7 +158,7 @@
 
 (defun max-value (pl node alpha beta)
   (if (terminal? node) (return-from max-value (utility pl (state node))))
-  (let ((value -9999999))
+  (let ((value -999))
     (loop for s in (successors pl node) do
 	 (setf value (max value (min-value pl s alpha beta)))
 	 (if (>= value beta) value)
@@ -167,7 +167,7 @@
 
 (defun min-value (pl node alpha beta)
   (if (terminal? node) (return-from min-value (utility pl (state node))))
-  (let ((value 9999999))
+  (let ((value 999))
     (loop for s in (successors pl node) do
 	 (setf value (min value (max-value pl s alpha beta)))
 	 (if (<= value alpha) value)

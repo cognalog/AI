@@ -215,7 +215,7 @@
     (cond
       ((eq moves 0) -999)
       ((eq (length (possible-moves opp state)) 0) 999)
-      (t (+ (* (length (possible-moves pl state)) 4)
+      (t (+ (* (length (relative-flex pl state)) 4)
 	    (* (relative-freedom pl state) 2))))))
 
 (defun emergency? (pl state)

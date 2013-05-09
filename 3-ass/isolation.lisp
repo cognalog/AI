@@ -215,7 +215,7 @@
     (cond
       ((eq moves 0) -999)
       ((eq (length (possible-moves opp state)) 0) 999)
-      (t (+ (* (length (relative-flex pl state)) 4)
+      (t (+ (* (relative-flex pl state) 4)
 	    (* (relative-freedom pl state) 2))))))
 
 (defun emergency? (pl state)
@@ -226,7 +226,7 @@
     (let ((enemy-close (or (eq (abs (- p-r o-r)) 1)
 			   (eq (abs (- p-c o-c)) 1)))
 	  (ast-prox (>= (adjacent-asterices p-r p-c state) 2))
-	  (few-moves (< (length (possible-moves pl state)) 10))
+	  (few-moves (< (length (possible-moves pl state)) 7))
 	  (on-edge (or (eq p-r 8) (eq p-c 8) (eq p-r 1) (eq p-c 1))))
     (or
      (and enemy-close ast-prox)
@@ -267,7 +267,7 @@
       (return-from max-value (casual-ev pl (state node))))
   (let ((value -999))
     (loop for s in (successors pl node) do
-	 (setf value (max value (min-value pl s alpha beta (- depth 1))))
+	 (setf value (max value (min-value (opponent pl) s alpha beta (- depth 1))))
 	 (if (>= value beta) (return-from max-value value))
 	 (setf alpha (max alpha value)))
     value))
@@ -279,7 +279,7 @@
       (return-from min-value (casual-ev pl (state node))))
   (let ((value 999))
     (loop for s in (successors pl node) do
-	 (setf value (min value (max-value pl s alpha beta (- depth 1))))
+	 (setf value (min value (max-value (opponent pl) s alpha beta (- depth 1))))
 	 (if (<= value alpha) (return-from min-value value))
 	 (setf beta (min beta value)))
     value))

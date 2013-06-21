@@ -15,3 +15,5 @@ problem spec: http://www.cs.columbia.edu/~sal/notes/assign2-compare-15puz.txt
 3-ass: Assignment 3 -- Isolation game playing using Adversarial Search (under construction)
 
 problem spec: http://www.cs.columbia.edu/~sal/notes/assign3-isolation-game.htm
+
+4-ass: Assignment 4 -- Decision Tree Learning Algorithm that accepts a list of records, each listing conditions (where the last "condition" is the outcome), and outputs a program that will infer the outcome from the conditions
